@@ -1,4 +1,3 @@
-```gitignore
 # Dependencies
 node_modules/
 
@@ -17,24 +16,16 @@ env/
 venv/
 .venv/
 .ENV
-.venv.bak/
-pip-log.txt
-pip-selfcheck.json
+.env
 
 # Logs
 *.log
 
-# Environment variables
-.env
-.env.local
-.env.*
-
-# IDE
+# Editor
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
 # OS
 .DS_Store
@@ -45,14 +36,7 @@ coverage/
 htmlcov/
 .coverage
 
-# Cache
-.mypy_cache/
-.pytest_cache/
-.gradle/
-.npm/
-.yarn/
-
-# Compressed files
+# Compressed
 *.zip
 *.gz
 *.tar
@@ -75,4 +59,14 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-```
+
+# Temp
+*.tmp
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.gradle/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

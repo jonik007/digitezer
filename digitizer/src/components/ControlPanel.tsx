@@ -12,6 +12,7 @@ export const ControlPanel: React.FC = () => {
     setToolMode,
     calibration,
     setScaleType,
+    updateCalibrationValue,
     series,
     activeSeriesId,
     addSeries,
@@ -164,33 +165,92 @@ export const ControlPanel: React.FC = () => {
       {toolMode === 'calibrate' && (
         <div style={{ marginBottom: '15px', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
           <h4 style={{ margin: '0 0 10px 0' }}>Настройки калибровки</h4>
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <label>
-              <span>Ось X: </span>
-              <select
-                value={calibration.xScaleType}
-                onChange={(e) => setScaleType('x', e.target.value as 'linear' | 'log')}
-                style={{ marginLeft: '5px' }}
-              >
-                <option value="linear">Линейная</option>
-                <option value="log">Логарифмическая</option>
-              </select>
-            </label>
-            <label>
-              <span>Ось Y: </span>
-              <select
-                value={calibration.yScaleType}
-                onChange={(e) => setScaleType('y', e.target.value as 'linear' | 'log')}
-                style={{ marginLeft: '5px' }}
-              >
-                <option value="linear">Линейная</option>
-                <option value="log">Логарифмическая</option>
-              </select>
-            </label>
+          
+          {/* X-axis calibration */}
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Ось X (красные точки)</div>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span>Точка 1:</span>
+                <input
+                  type="number"
+                  value={calibration.xPoints[0]?.value ?? 0}
+                  onChange={(e) => updateCalibrationValue('x', 0, parseFloat(e.target.value) || 0)}
+                  style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  disabled={!calibration.xPoints[0] || (calibration.xPoints[0].canvasX === 0 && calibration.xPoints[0].canvasY === 0)}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span>Точка 2:</span>
+                <input
+                  type="number"
+                  value={calibration.xPoints[1]?.value ?? 100}
+                  onChange={(e) => updateCalibrationValue('x', 1, parseFloat(e.target.value) || 0)}
+                  style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  disabled={!calibration.xPoints[1] || (calibration.xPoints[1].canvasX === 0 && calibration.xPoints[1].canvasY === 0)}
+                />
+              </label>
+              <label>
+                <span>Тип шкалы: </span>
+                <select
+                  value={calibration.xScaleType}
+                  onChange={(e) => setScaleType('x', e.target.value as 'linear' | 'log')}
+                  style={{ marginLeft: '5px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                >
+                  <option value="linear">Линейная</option>
+                  <option value="log">Логарифмическая</option>
+                </select>
+              </label>
+            </div>
           </div>
+          
+          {/* Y-axis calibration */}
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Ось Y (синие точки)</div>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span>Точка 1:</span>
+                <input
+                  type="number"
+                  value={calibration.yPoints[0]?.value ?? 0}
+                  onChange={(e) => updateCalibrationValue('y', 0, parseFloat(e.target.value) || 0)}
+                  style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  disabled={!calibration.yPoints[0] || (calibration.yPoints[0].canvasX === 0 && calibration.yPoints[0].canvasY === 0)}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span>Точка 2:</span>
+                <input
+                  type="number"
+                  value={calibration.yPoints[1]?.value ?? 100}
+                  onChange={(e) => updateCalibrationValue('y', 1, parseFloat(e.target.value) || 0)}
+                  style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  disabled={!calibration.yPoints[1] || (calibration.yPoints[1].canvasX === 0 && calibration.yPoints[1].canvasY === 0)}
+                />
+              </label>
+              <label>
+                <span>Тип шкалы: </span>
+                <select
+                  value={calibration.yScaleType}
+                  onChange={(e) => setScaleType('y', e.target.value as 'linear' | 'log')}
+                  style={{ marginLeft: '5px', padding: '4px', borderRadius: '4px', border: '1px solid #ccc' }}
+                >
+                  <option value="linear">Линейная</option>
+                  <option value="log">Логарифмическая</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          
           <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-            Кликните на холсте чтобы установить точки калибровки: сначала 2 точки для оси X (красные), затем 2 для оси Y (синие)
+            Кликните на холсте чтобы установить точки калибровки: сначала 2 точки для оси X (красные), затем 2 для оси Y (синие). 
+            После установки точек можно изменить их числовые значения в полях выше.
           </p>
+          {calibration.isCalibrated && (
+            <p style={{ fontSize: '12px', color: '#28a745', marginTop: '5px', fontWeight: 'bold' }}>
+              ✓ Калибровка завершена
+            </p>
+          )}
         </div>
       )}
 

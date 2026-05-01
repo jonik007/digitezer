@@ -19,11 +19,11 @@ function App() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px' }}>
         {/* Canvas Area */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'auto' }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
           <div style={{ padding: '15px', borderBottom: '1px solid #eee' }}>
             <h2 style={{ margin: 0, fontSize: '18px' }}>Рабочая область</h2>
           </div>
-          <div style={{ padding: '15px' }}>
+          <div style={{ padding: '15px', overflow: 'auto', maxHeight: '70vh' }}>
             <DigitizerCanvas width={canvasSize.width} height={canvasSize.height} />
           </div>
         </div>

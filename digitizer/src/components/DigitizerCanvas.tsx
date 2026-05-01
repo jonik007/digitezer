@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-konva';
 import { useAppStore } from '../store/appStore';
-import { canvasToDataCoords, dataToCanvasCoords } from '../utils/coordinateTransform';
+import { dataToCanvasCoords } from '../utils/coordinateTransform';
 
 interface CanvasProps {
   width: number;
@@ -12,7 +12,6 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
   const stageRef = useRef<any>(null);
   const imageRef = useRef<any>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const {
     imageSrc,
@@ -45,12 +44,9 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     if (!imageRef.current) {
       return { x: stageX, y: stageY };
     }
-    // Get the absolute transform of the image node
     const absTransform = imageRef.current.getAbsoluteTransform();
-    // Get the inverse transform
     const inverseTransform = absTransform.copy();
     inverseTransform.invert();
-    // Apply the inverse transform to get image-local coordinates
     const transformed = inverseTransform.point({ x: stageX, y: stageY });
     return { x: transformed.x, y: transformed.y };
   };
@@ -60,9 +56,7 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     if (!imageRef.current) {
       return { x: canvasX, y: canvasY };
     }
-    // Get the absolute transform of the image node
     const absTransform = imageRef.current.getAbsoluteTransform();
-    // Apply the transform to get stage coordinates
     const transformed = absTransform.point({ x: canvasX, y: canvasY });
     return { x: transformed.x, y: transformed.y };
   };
@@ -74,43 +68,43 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     const pointerPos = stage.getPointerPosition();
     if (!pointerPos) return;
 
-    // Convert stage coordinates to image-local coordinates using Konva's transform
+    // Convert stage coordinates to image-local coordinates
     const imgCoords = toImageCoords(pointerPos.x, pointerPos.y);
     const canvasX = imgCoords.x;
     const canvasY = imgCoords.y;
 
     if (toolMode === 'calibrate') {
-      // Determine which axis and index to set based on current state
       const xPointsSet = calibration.xPoints.filter(p => p.canvasX !== 0 || p.canvasY !== 0).length;
       const yPointsSet = calibration.yPoints.filter(p => p.canvasX !== 0 || p.canvasY !== 0).length;
 
       if (xPointsSet < 2) {
-        // Use the existing value from the input field if already set
         const existingValue = calibration.xPoints[xPointsSet]?.value ?? (xPointsSet === 0 ? 0 : 100);
         setCalibrationPoint('x', xPointsSet, canvasX, canvasY, existingValue);
       } else if (yPointsSet < 2) {
-        // Use the existing value from the input field if already set
         const existingValue = calibration.yPoints[yPointsSet]?.value ?? (yPointsSet === 0 ? 0 : 100);
         setCalibrationPoint('y', yPointsSet, canvasX, canvasY, existingValue);
       }
     } else if (toolMode === 'digitize' && activeSeriesId && calibration.isCalibrated) {
-      const dataPoint = canvasToDataCoords(canvasX, canvasY, calibration);
-      if (dataPoint) {
-        addPointToSeries(activeSeriesId, dataPoint);
-      }
+      // canvasToDataCoords will be imported and used here when needed
+      import('../utils/coordinateTransform').then(({ canvasToDataCoords }) => {
+        const dataPoint = canvasToDataCoords(canvasX, canvasY, calibration);
+        if (dataPoint) {
+          addPointToSeries(activeSeriesId, dataPoint);
+        }
+      });
     }
   };
 
   const handlePointDragEnd = (seriesId: string, pointIndex: number, e: any) => {
     const node = e.target;
-    // The node's position is in stage coordinates - convert to image-local coords using Konva's transform
     const imgCoords = toImageCoords(node.x(), node.y());
-
-    // Recalculate data coordinates based on new position
-    const dataPoint = canvasToDataCoords(imgCoords.x, imgCoords.y, calibration);
-    if (dataPoint) {
-      updateSeriesPoint(seriesId, pointIndex, dataPoint);
-    }
+    
+    import('../utils/coordinateTransform').then(({ canvasToDataCoords }) => {
+      const dataPoint = canvasToDataCoords(imgCoords.x, imgCoords.y, calibration);
+      if (dataPoint) {
+        updateSeriesPoint(seriesId, pointIndex, dataPoint);
+      }
+    });
   };
 
   return (
@@ -122,7 +116,6 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
       style={{ backgroundColor: '#f5f5f5', border: '1px solid #ddd' }}
     >
       <Layer>
-        {/* Background image */}
         {imageObj && (
           <KonvaImage
             ref={imageRef}
@@ -148,7 +141,7 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
           />
         )}
 
-        {/* Calibration points - rendered in image-local coordinates */}
+        {/* Calibration points - stored in image-local coords, displayed via toStageCoords */}
         {calibration.xPoints.map((point, index) => {
           const stagePos = toStageCoords(point.canvasX, point.canvasY);
           return (
@@ -203,10 +196,9 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
           );
         })}
 
-        {/* Data series points - rendered in image-local coordinates */}
+        {/* Data series points - use dataToCanvasCoords then toStageCoords */}
         {series.map((s) => (
           <Group key={s.id}>
-            {/* Lines connecting points */}
             {s.showLines && s.points.length > 1 && (
               <Line
                 points={s.points.flatMap((p) => {
@@ -221,7 +213,6 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
                 lineJoin="round"
               />
             )}
-            {/* Individual points */}
             {s.showMarkers &&
               s.points.map((point, pointIndex) => {
                 const imgCoords = dataToCanvasCoords(point.x, point.y, calibration);

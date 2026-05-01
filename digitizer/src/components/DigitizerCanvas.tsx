@@ -46,33 +46,10 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     const pointerPos = stage.getPointerPosition();
     if (!pointerPos) return;
 
-    // Get the current transform of the image to adjust coordinates
-    const imgX = imageTransform.x;
-    const imgY = imageTransform.y;
-    const imgScale = imageTransform.scale;
-    const imgRotation = imageTransform.rotation;
-
-    // Convert pointer position to image-local coordinates
-    // We need to account for the image transform (position, scale, rotation)
-    let canvasX = pointerPos.x;
-    let canvasY = pointerPos.y;
-
-    // Apply inverse rotation if needed
-    if (imgRotation !== 0) {
-      const rad = (imgRotation * Math.PI) / 180;
-      const cos = Math.cos(-rad);
-      const sin = Math.sin(-rad);
-      const dx = canvasX - imgX;
-      const dy = canvasY - imgY;
-      canvasX = imgX + dx * cos - dy * sin;
-      canvasY = imgY + dx * sin + dy * cos;
-    }
-
-    // Apply inverse scale
-    if (imgScale !== 1 && imgScale !== 0) {
-      canvasX = imgX + (canvasX - imgX) / imgScale;
-      canvasY = imgY + (canvasY - imgY) / imgScale;
-    }
+    // Convert stage coordinates to image-local coordinates
+    const imgCoords = toImageCoords(pointerPos.x, pointerPos.y);
+    const canvasX = imgCoords.x;
+    const canvasY = imgCoords.y;
 
     if (toolMode === 'calibrate') {
       // Determine which axis and index to set based on current state
@@ -80,9 +57,13 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
       const yPointsSet = calibration.yPoints.filter(p => p.canvasX !== 0 || p.canvasY !== 0).length;
 
       if (xPointsSet < 2) {
-        setCalibrationPoint('x', xPointsSet, canvasX, canvasY, xPointsSet === 0 ? 0 : 100);
+        // Use the existing value from the input field if already set
+        const existingValue = calibration.xPoints[xPointsSet]?.value ?? (xPointsSet === 0 ? 0 : 100);
+        setCalibrationPoint('x', xPointsSet, canvasX, canvasY, existingValue);
       } else if (yPointsSet < 2) {
-        setCalibrationPoint('y', yPointsSet, canvasX, canvasY, yPointsSet === 0 ? 0 : 100);
+        // Use the existing value from the input field if already set
+        const existingValue = calibration.yPoints[yPointsSet]?.value ?? (yPointsSet === 0 ? 0 : 100);
+        setCalibrationPoint('y', yPointsSet, canvasX, canvasY, existingValue);
       }
     } else if (toolMode === 'digitize' && activeSeriesId && calibration.isCalibrated) {
       const dataPoint = canvasToDataCoords(canvasX, canvasY, calibration);

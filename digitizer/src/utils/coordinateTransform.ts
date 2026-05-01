@@ -137,16 +137,23 @@ export function dataToCanvasCoords(
     yRatio = (dataY - y1.value) / (y2.value - y1.value);
   }
 
-  const canvasX = x1.canvasX + xRatio * xPixelDist * xUnitX;
-  const canvasY = x1.canvasY + xRatio * xPixelDist * xUnitY;
+  // Inverse of canvasToDataCoords: find pixel P such that
+  //   dot(P - x1, ux) = xRatio * xPixelDist
+  //   dot(P - y1, uy) = yRatio * yPixelDist
+  // with ux, uy unit vectors along the X and Y calibration segments (same as forward).
+  const c1 =
+    x1.canvasX * xUnitX + x1.canvasY * xUnitY + xRatio * xPixelDist;
+  const c2 =
+    y1.canvasX * yUnitX + y1.canvasY * yUnitY + yRatio * yPixelDist;
 
-  // For Y, we need to use the Y axis direction
-  const canvasXFromY = y1.canvasX + yRatio * yPixelDist * yUnitX;
-  const canvasYFromY = y1.canvasY + yRatio * yPixelDist * yUnitY;
+  const det = xUnitX * yUnitY - xUnitY * yUnitX;
+  const eps = 1e-9;
+  if (Math.abs(det) < eps) {
+    return null;
+  }
 
-  // Average the two calculations for better accuracy
-  return {
-    x: (canvasX + canvasXFromY) / 2,
-    y: (canvasY + canvasYFromY) / 2,
-  };
+  const canvasX = (c1 * yUnitY - xUnitY * c2) / det;
+  const canvasY = (xUnitX * c2 - yUnitX * c1) / det;
+
+  return { x: canvasX, y: canvasY };
 }

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-konva';
 import { useAppStore } from '../store/appStore';
-import { canvasToDataCoords } from '../utils/coordinateTransform';
+import { canvasToDataCoords, dataToCanvasCoords } from '../utils/coordinateTransform';
 
 interface CanvasProps {
   width: number;
@@ -46,8 +46,33 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     const pointerPos = stage.getPointerPosition();
     if (!pointerPos) return;
 
-    const canvasX = pointerPos.x;
-    const canvasY = pointerPos.y;
+    // Get the current transform of the image to adjust coordinates
+    const imgX = imageTransform.x;
+    const imgY = imageTransform.y;
+    const imgScale = imageTransform.scale;
+    const imgRotation = imageTransform.rotation;
+
+    // Convert pointer position to image-local coordinates
+    // We need to account for the image transform (position, scale, rotation)
+    let canvasX = pointerPos.x;
+    let canvasY = pointerPos.y;
+
+    // Apply inverse rotation if needed
+    if (imgRotation !== 0) {
+      const rad = (imgRotation * Math.PI) / 180;
+      const cos = Math.cos(-rad);
+      const sin = Math.sin(-rad);
+      const dx = canvasX - imgX;
+      const dy = canvasY - imgY;
+      canvasX = imgX + dx * cos - dy * sin;
+      canvasY = imgY + dx * sin + dy * cos;
+    }
+
+    // Apply inverse scale
+    if (imgScale !== 1 && imgScale !== 0) {
+      canvasX = imgX + (canvasX - imgX) / imgScale;
+      canvasY = imgY + (canvasY - imgY) / imgScale;
+    }
 
     if (toolMode === 'calibrate') {
       // Determine which axis and index to set based on current state
@@ -67,13 +92,73 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     }
   };
 
+  // Helper to convert from image-local coords to stage coords (for rendering calibration points)
+  const toStageCoords = (canvasX: number, canvasY: number) => {
+    const imgX = imageTransform.x;
+    const imgY = imageTransform.y;
+    const imgScale = imageTransform.scale;
+    const imgRotation = imageTransform.rotation;
+
+    let stageX = canvasX;
+    let stageY = canvasY;
+
+    // Apply scale
+    if (imgScale !== 1 && imgScale !== 0) {
+      stageX = imgX + (stageX - imgX) * imgScale;
+      stageY = imgY + (stageY - imgY) * imgScale;
+    }
+
+    // Apply rotation
+    if (imgRotation !== 0) {
+      const rad = (imgRotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = stageX - imgX;
+      const dy = stageY - imgY;
+      stageX = imgX + dx * cos - dy * sin;
+      stageY = imgY + dx * sin + dy * cos;
+    }
+
+    return { x: stageX, y: stageY };
+  };
+
+  // Helper to convert from stage coords to image-local coords
+  const toImageCoords = (stageX: number, stageY: number) => {
+    const imgX = imageTransform.x;
+    const imgY = imageTransform.y;
+    const imgScale = imageTransform.scale;
+    const imgRotation = imageTransform.rotation;
+
+    let canvasX = stageX;
+    let canvasY = stageY;
+
+    // Apply inverse rotation
+    if (imgRotation !== 0) {
+      const rad = (imgRotation * Math.PI) / 180;
+      const cos = Math.cos(-rad);
+      const sin = Math.sin(-rad);
+      const dx = canvasX - imgX;
+      const dy = canvasY - imgY;
+      canvasX = imgX + dx * cos - dy * sin;
+      canvasY = imgY + dx * sin + dy * cos;
+    }
+
+    // Apply inverse scale
+    if (imgScale !== 1 && imgScale !== 0) {
+      canvasX = imgX + (canvasX - imgX) / imgScale;
+      canvasY = imgY + (canvasY - imgY) / imgScale;
+    }
+
+    return { x: canvasX, y: canvasY };
+  };
+
   const handlePointDragEnd = (seriesId: string, pointIndex: number, e: any) => {
     const node = e.target;
-    const newX = node.x();
-    const newY = node.y();
+    // The node's position is in stage coordinates - convert to image-local coords
+    const imgCoords = toImageCoords(node.x(), node.y());
 
     // Recalculate data coordinates based on new position
-    const dataPoint = canvasToDataCoords(newX, newY, calibration);
+    const dataPoint = canvasToDataCoords(imgCoords.x, imgCoords.y, calibration);
     if (dataPoint) {
       updateSeriesPoint(seriesId, pointIndex, dataPoint);
     }
@@ -113,62 +198,72 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
           />
         )}
 
-        {/* Calibration points */}
-        {calibration.xPoints.map((point, index) => (
-          <Group key={point.id}>
-            <Circle
-              x={point.canvasX}
-              y={point.canvasY}
-              radius={8}
-              fill="rgba(255, 0, 0, 0.5)"
-              stroke="red"
-              strokeWidth={2}
-              draggable={toolMode === 'calibrate'}
-              onDragEnd={(e) => {
-                setCalibrationPoint('x', index, e.target.x(), e.target.y(), point.value);
-              }}
-            />
-            <Circle
-              x={point.canvasX}
-              y={point.canvasY}
-              radius={3}
-              fill="red"
-            />
-          </Group>
-        ))}
+        {/* Calibration points - rendered in image-local coordinates */}
+        {calibration.xPoints.map((point, index) => {
+          const stagePos = toStageCoords(point.canvasX, point.canvasY);
+          return (
+            <Group key={point.id}>
+              <Circle
+                x={stagePos.x}
+                y={stagePos.y}
+                radius={8}
+                fill="rgba(255, 0, 0, 0.5)"
+                stroke="red"
+                strokeWidth={2}
+                draggable={toolMode === 'calibrate'}
+                onDragEnd={(e) => {
+                  const imgCoords = toImageCoords(e.target.x(), e.target.y());
+                  setCalibrationPoint('x', index, imgCoords.x, imgCoords.y, point.value);
+                }}
+              />
+              <Circle
+                x={stagePos.x}
+                y={stagePos.y}
+                radius={3}
+                fill="red"
+              />
+            </Group>
+          );
+        })}
 
-        {calibration.yPoints.map((point, index) => (
-          <Group key={point.id}>
-            <Circle
-              x={point.canvasX}
-              y={point.canvasY}
-              radius={8}
-              fill="rgba(0, 0, 255, 0.5)"
-              stroke="blue"
-              strokeWidth={2}
-              draggable={toolMode === 'calibrate'}
-              onDragEnd={(e) => {
-                setCalibrationPoint('y', index, e.target.x(), e.target.y(), point.value);
-              }}
-            />
-            <Circle
-              x={point.canvasX}
-              y={point.canvasY}
-              radius={3}
-              fill="blue"
-            />
-          </Group>
-        ))}
+        {calibration.yPoints.map((point, index) => {
+          const stagePos = toStageCoords(point.canvasX, point.canvasY);
+          return (
+            <Group key={point.id}>
+              <Circle
+                x={stagePos.x}
+                y={stagePos.y}
+                radius={8}
+                fill="rgba(0, 0, 255, 0.5)"
+                stroke="blue"
+                strokeWidth={2}
+                draggable={toolMode === 'calibrate'}
+                onDragEnd={(e) => {
+                  const imgCoords = toImageCoords(e.target.x(), e.target.y());
+                  setCalibrationPoint('y', index, imgCoords.x, imgCoords.y, point.value);
+                }}
+              />
+              <Circle
+                x={stagePos.x}
+                y={stagePos.y}
+                radius={3}
+                fill="blue"
+              />
+            </Group>
+          );
+        })}
 
-        {/* Data series points */}
+        {/* Data series points - rendered in image-local coordinates */}
         {series.map((s) => (
           <Group key={s.id}>
             {/* Lines connecting points */}
             {s.showLines && s.points.length > 1 && (
               <Line
-                points={s.points.flatMap((p, i) => {
-                  const canvasP = canvasToDataCoords(p.x, p.y, calibration);
-                  return canvasP ? [canvasP.x, canvasP.y] : [];
+                points={s.points.flatMap((p) => {
+                  const imgCoords = dataToCanvasCoords(p.x, p.y, calibration);
+                  if (!imgCoords) return [];
+                  const stagePos = toStageCoords(imgCoords.x, imgCoords.y);
+                  return [stagePos.x, stagePos.y];
                 })}
                 stroke={s.color}
                 strokeWidth={2}
@@ -179,13 +274,14 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
             {/* Individual points */}
             {s.showMarkers &&
               s.points.map((point, pointIndex) => {
-                const canvasP = canvasToDataCoords(point.x, point.y, calibration);
-                if (!canvasP) return null;
+                const imgCoords = dataToCanvasCoords(point.x, point.y, calibration);
+                if (!imgCoords) return null;
+                const stagePos = toStageCoords(imgCoords.x, imgCoords.y);
                 return (
                   <Circle
                     key={pointIndex}
-                    x={canvasP.x}
-                    y={canvasP.y}
+                    x={stagePos.x}
+                    y={stagePos.y}
                     radius={5}
                     fill={s.color}
                     stroke="#fff"

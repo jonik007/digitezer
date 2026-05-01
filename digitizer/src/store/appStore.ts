@@ -20,6 +20,7 @@ interface AppState {
   setImageSrc: (src: string | null) => void;
   setImageTransform: (transform: Partial<ImageTransform>) => void;
   setCalibrationPoint: (axis: 'x' | 'y', index: number, canvasX: number, canvasY: number, value: number) => void;
+  updateCalibrationValue: (axis: 'x' | 'y', index: number, value: number) => void;
   setScaleType: (axis: 'x' | 'y', scaleType: 'linear' | 'log') => void;
   addSeries: (name: string, color: string) => string;
   removeSeries: (id: string) => void;
@@ -84,7 +85,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const xPoints = axis === 'x' ? points : state.calibration.xPoints;
       const yPoints = axis === 'y' ? points : state.calibration.yPoints;
       
-      const isCalibrated = xPoints.length >= 2 && yPoints.length >= 2;
+      // Only mark as calibrated if both axes have 2 points with non-zero coordinates
+      const isCalibrated = xPoints.length >= 2 && yPoints.length >= 2 && 
+        xPoints.every(p => p.canvasX !== 0 || p.canvasY !== 0) &&
+        yPoints.every(p => p.canvasX !== 0 || p.canvasY !== 0);
       
       return {
         calibration: {
@@ -92,6 +96,27 @@ export const useAppStore = create<AppState>((set, get) => ({
           xPoints: xPoints.sort((a, b) => a.index - b.index),
           yPoints: yPoints.sort((a, b) => a.index - b.index),
           isCalibrated,
+        }
+      };
+    }),
+  
+  // New action to update calibration point value
+  updateCalibrationValue: (axis, index, value) =>
+    set((state) => {
+      const points = axis === 'x' ? [...state.calibration.xPoints] : [...state.calibration.yPoints];
+      const pointIndex = points.findIndex(p => p.index === index);
+      if (pointIndex !== -1) {
+        points[pointIndex] = { ...points[pointIndex], value };
+      }
+      
+      const xPoints = axis === 'x' ? points : state.calibration.xPoints;
+      const yPoints = axis === 'y' ? points : state.calibration.yPoints;
+      
+      return {
+        calibration: {
+          ...state.calibration,
+          xPoints: xPoints.sort((a, b) => a.index - b.index),
+          yPoints: yPoints.sort((a, b) => a.index - b.index),
         }
       };
     }),

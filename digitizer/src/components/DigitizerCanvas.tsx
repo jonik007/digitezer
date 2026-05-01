@@ -10,6 +10,7 @@ interface CanvasProps {
 
 export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
   const stageRef = useRef<any>(null);
+  const imageRef = useRef<any>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -39,6 +40,33 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     img.src = imageSrc;
   }, [imageSrc]);
 
+  // Helper to convert from stage coords to image-local coords using Konva's transform
+  const toImageCoords = (stageX: number, stageY: number) => {
+    if (!imageRef.current) {
+      return { x: stageX, y: stageY };
+    }
+    // Get the absolute transform of the image node
+    const absTransform = imageRef.current.getAbsoluteTransform();
+    // Get the inverse transform
+    const inverseTransform = absTransform.copy();
+    inverseTransform.invert();
+    // Apply the inverse transform to get image-local coordinates
+    const transformed = inverseTransform.point({ x: stageX, y: stageY });
+    return { x: transformed.x, y: transformed.y };
+  };
+
+  // Helper to convert from image-local coords to stage coords using Konva's transform
+  const toStageCoords = (canvasX: number, canvasY: number) => {
+    if (!imageRef.current) {
+      return { x: canvasX, y: canvasY };
+    }
+    // Get the absolute transform of the image node
+    const absTransform = imageRef.current.getAbsoluteTransform();
+    // Apply the transform to get stage coordinates
+    const transformed = absTransform.point({ x: canvasX, y: canvasY });
+    return { x: transformed.x, y: transformed.y };
+  };
+
   const handleStageClick = (e: any) => {
     if (toolMode === 'pan') return;
 
@@ -46,7 +74,7 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     const pointerPos = stage.getPointerPosition();
     if (!pointerPos) return;
 
-    // Convert stage coordinates to image-local coordinates
+    // Convert stage coordinates to image-local coordinates using Konva's transform
     const imgCoords = toImageCoords(pointerPos.x, pointerPos.y);
     const canvasX = imgCoords.x;
     const canvasY = imgCoords.y;
@@ -73,69 +101,9 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     }
   };
 
-  // Helper to convert from image-local coords to stage coords (for rendering calibration points)
-  const toStageCoords = (canvasX: number, canvasY: number) => {
-    const imgX = imageTransform.x;
-    const imgY = imageTransform.y;
-    const imgScale = imageTransform.scale;
-    const imgRotation = imageTransform.rotation;
-
-    let stageX = canvasX;
-    let stageY = canvasY;
-
-    // Apply scale
-    if (imgScale !== 1 && imgScale !== 0) {
-      stageX = imgX + (stageX - imgX) * imgScale;
-      stageY = imgY + (stageY - imgY) * imgScale;
-    }
-
-    // Apply rotation
-    if (imgRotation !== 0) {
-      const rad = (imgRotation * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      const dx = stageX - imgX;
-      const dy = stageY - imgY;
-      stageX = imgX + dx * cos - dy * sin;
-      stageY = imgY + dx * sin + dy * cos;
-    }
-
-    return { x: stageX, y: stageY };
-  };
-
-  // Helper to convert from stage coords to image-local coords
-  const toImageCoords = (stageX: number, stageY: number) => {
-    const imgX = imageTransform.x;
-    const imgY = imageTransform.y;
-    const imgScale = imageTransform.scale;
-    const imgRotation = imageTransform.rotation;
-
-    let canvasX = stageX;
-    let canvasY = stageY;
-
-    // Apply inverse rotation
-    if (imgRotation !== 0) {
-      const rad = (imgRotation * Math.PI) / 180;
-      const cos = Math.cos(-rad);
-      const sin = Math.sin(-rad);
-      const dx = canvasX - imgX;
-      const dy = canvasY - imgY;
-      canvasX = imgX + dx * cos - dy * sin;
-      canvasY = imgY + dx * sin + dy * cos;
-    }
-
-    // Apply inverse scale
-    if (imgScale !== 1 && imgScale !== 0) {
-      canvasX = imgX + (canvasX - imgX) / imgScale;
-      canvasY = imgY + (canvasY - imgY) / imgScale;
-    }
-
-    return { x: canvasX, y: canvasY };
-  };
-
   const handlePointDragEnd = (seriesId: string, pointIndex: number, e: any) => {
     const node = e.target;
-    // The node's position is in stage coordinates - convert to image-local coords
+    // The node's position is in stage coordinates - convert to image-local coords using Konva's transform
     const imgCoords = toImageCoords(node.x(), node.y());
 
     // Recalculate data coordinates based on new position
@@ -157,6 +125,7 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
         {/* Background image */}
         {imageObj && (
           <KonvaImage
+            ref={imageRef}
             image={imageObj}
             x={imageTransform.x}
             y={imageTransform.y}

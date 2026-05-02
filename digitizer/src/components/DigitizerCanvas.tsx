@@ -247,6 +247,18 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
               })}
           </Group>
         ))}
+
+        {/* Crosshair reference lines in bottom-left corner */}
+        <Line
+          points={[20, height - 20, width - 20, height - 20]} // Horizontal line
+          stroke="green"
+          strokeWidth={1}
+        />
+        <Line
+          points={[20, 20, 20, height - 20]} // Vertical line
+          stroke="green"
+          strokeWidth={1}
+        />
       </Layer>
     </Stage>
   );

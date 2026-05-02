@@ -22,6 +22,7 @@ interface AppState {
   setCalibrationPoint: (axis: 'x' | 'y', index: number, canvasX: number, canvasY: number, value: number) => void;
   updateCalibrationValue: (axis: 'x' | 'y', index: number, value: number) => void;
   setScaleType: (axis: 'x' | 'y', scaleType: 'linear' | 'log') => void;
+  toggleShowAxes: () => void;
   addSeries: (name: string, color: string) => string;
   removeSeries: (id: string) => void;
   setActiveSeries: (id: string | null) => void;
@@ -32,6 +33,7 @@ interface AppState {
   clearAllData: () => void;
   exportToCSV: () => string;
   exportToJSON: () => string;
+  exportToPythonList: () => string;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -55,6 +57,7 @@ const defaultCalibration: CalibrationState = {
   xScaleType: 'linear',
   yScaleType: 'linear',
   isCalibrated: false,
+  showAxes: true,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -126,6 +129,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       calibration: {
         ...state.calibration,
         [axis === 'x' ? 'xScaleType' : 'yScaleType']: scaleType,
+      }
+    })),
+  
+  toggleShowAxes: () =>
+    set((state) => ({
+      calibration: {
+        ...state.calibration,
+        showAxes: !state.calibration.showAxes,
       }
     })),
   
@@ -210,5 +221,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       calibration: state.calibration,
       series: state.series,
     }, null, 2);
+  },
+  
+  exportToPythonList: () => {
+    const state = get();
+    let output = '';
+    state.series.forEach(series => {
+      const pointsStr = series.points.map(p => `    (${p.x.toFixed(5)}, ${p.y.toFixed(2)})`).join(',\n');
+      output += `${series.name} = [\n${pointsStr}\n]\n\n`;
+    });
+    return output;
   },
 }));

@@ -13,6 +13,7 @@ export const ControlPanel: React.FC = () => {
     calibration,
     setScaleType,
     updateCalibrationValue,
+    toggleShowAxes,
     series,
     activeSeriesId,
     addSeries,
@@ -20,6 +21,7 @@ export const ControlPanel: React.FC = () => {
     setActiveSeries,
     exportToCSV,
     exportToJSON,
+    exportToPythonList,
     clearAllData,
   } = useAppStore();
 
@@ -72,6 +74,12 @@ export const ControlPanel: React.FC = () => {
     const json = exportToJSON();
     const blob = new Blob([json], { type: 'application/json' });
     FileSaver.saveAs(blob, 'digitizer_project.json');
+  };
+
+  const handleExportPythonList = () => {
+    const pythonList = exportToPythonList();
+    const blob = new Blob([pythonList], { type: 'text/plain;charset=utf-8' });
+    FileSaver.saveAs(blob, 'digitized_data.py');
   };
 
   return (
@@ -247,9 +255,22 @@ export const ControlPanel: React.FC = () => {
             После установки точек можно изменить их числовые значения в полях выше.
           </p>
           {calibration.isCalibrated && (
-            <p style={{ fontSize: '12px', color: '#28a745', marginTop: '5px', fontWeight: 'bold' }}>
-              ✓ Калибровка завершена
-            </p>
+            <>
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={calibration.showAxes}
+                    onChange={toggleShowAxes}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>Показать оси калибровки</span>
+                </label>
+              </div>
+              <p style={{ fontSize: '12px', color: '#28a745', marginTop: '5px', fontWeight: 'bold' }}>
+                ✓ Калибровка завершена
+              </p>
+            </>
           )}
         </div>
       )}

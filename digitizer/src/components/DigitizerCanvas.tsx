@@ -28,6 +28,9 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     toolMode,
   } = useAppStore();
 
+  // State to track which point to delete on click
+  const [pointToDelete, setPointToDelete] = useState<{ seriesId: string; pointIndex: number } | null>(null);
+
   // Load image when src changes
   React.useEffect(() => {
     if (!imageSrc) {
@@ -110,6 +113,13 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     const dataPoint = canvasToDataCoords(imgCoords.x, imgCoords.y, calibration);
     if (dataPoint) {
       updateSeriesPoint(seriesId, pointIndex, dataPoint);
+    }
+  };
+
+  // Handle click on a point to delete it in digitize mode
+  const handlePointClick = (seriesId: string, pointIndex: number) => {
+    if (toolMode === 'digitize') {
+      removePointFromSeries(seriesId, pointIndex);
     }
   };
 
@@ -238,6 +248,7 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
                     strokeWidth={1}
                     draggable={toolMode === 'digitize'}
                     onDragEnd={(e) => handlePointDragEnd(s.id, pointIndex, e)}
+                    onClick={() => handlePointClick(s.id, pointIndex)}
                     onContextMenu={(e) => {
                       e.evt.preventDefault();
                       removePointFromSeries(s.id, pointIndex);
@@ -247,6 +258,36 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
               })}
           </Group>
         ))}
+
+        {/* Calibration axes - rendered only after calibration and if showAxes is true */}
+        {calibration.isCalibrated && calibration.showAxes && (
+          <Group>
+            {/* X-axis line */}
+            <Line
+              points={[
+                calibration.xPoints[0].canvasX,
+                calibration.xPoints[0].canvasY,
+                calibration.xPoints[1].canvasX,
+                calibration.xPoints[1].canvasY,
+              ]}
+              stroke="red"
+              strokeWidth={2}
+              dash={[5, 5]}
+            />
+            {/* Y-axis line */}
+            <Line
+              points={[
+                calibration.yPoints[0].canvasX,
+                calibration.yPoints[0].canvasY,
+                calibration.yPoints[1].canvasX,
+                calibration.yPoints[1].canvasY,
+              ]}
+              stroke="blue"
+              strokeWidth={2}
+              dash={[5, 5]}
+            />
+          </Group>
+        )}
 
         {/* Crosshair reference lines in bottom-left corner */}
         <Line

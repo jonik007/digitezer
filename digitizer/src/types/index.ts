@@ -27,6 +27,7 @@ export interface CalibrationState {
   xScaleType: 'linear' | 'log';
   yScaleType: 'linear' | 'log';
   isCalibrated: boolean;
+  showAxes: boolean;
 }
 
 export interface ImageTransform {

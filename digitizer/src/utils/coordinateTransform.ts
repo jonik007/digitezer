@@ -75,6 +75,11 @@ export function canvasToDataCoords(
     dataY = y1.value + (yProj / yPixelDist) * (y2.value - y1.value);
   }
 
+  // Swap X and Y if swapAxes is enabled
+  if (calibration.swapAxes) {
+    return { x: dataY, y: dataX };
+  }
+
   return { x: dataX, y: dataY };
 }
 
@@ -85,6 +90,14 @@ export function dataToCanvasCoords(
 ): Point | null {
   if (!calibration.isCalibrated || calibration.xPoints.length < 2 || calibration.yPoints.length < 2) {
     return null;
+  }
+
+  // Swap X and Y if swapAxes is enabled
+  let actualDataX = dataX;
+  let actualDataY = dataY;
+  if (calibration.swapAxes) {
+    actualDataX = dataY;
+    actualDataY = dataX;
   }
 
   const x1 = calibration.xPoints[0];
@@ -110,31 +123,31 @@ export function dataToCanvasCoords(
   if (calibration.xScaleType === 'log') {
     const xMin = Math.min(x1.value, x2.value);
     const xMax = Math.max(x1.value, x2.value);
-    if (xMin <= 0 || xMax <= 0 || dataX <= 0) {
-      xRatio = (dataX - x1.value) / (x2.value - x1.value);
+    if (xMin <= 0 || xMax <= 0 || actualDataX <= 0) {
+      xRatio = (actualDataX - x1.value) / (x2.value - x1.value);
     } else {
       const logMin = Math.log10(xMin);
       const logMax = Math.log10(xMax);
-      const logData = Math.log10(dataX);
+      const logData = Math.log10(actualDataX);
       xRatio = (logData - logMin) / (logMax - logMin);
     }
   } else {
-    xRatio = (dataX - x1.value) / (x2.value - x1.value);
+    xRatio = (actualDataX - x1.value) / (x2.value - x1.value);
   }
 
   if (calibration.yScaleType === 'log') {
     const yMin = Math.min(y1.value, y2.value);
     const yMax = Math.max(y1.value, y2.value);
-    if (yMin <= 0 || yMax <= 0 || dataY <= 0) {
-      yRatio = (dataY - y1.value) / (y2.value - y1.value);
+    if (yMin <= 0 || yMax <= 0 || actualDataY <= 0) {
+      yRatio = (actualDataY - y1.value) / (y2.value - y1.value);
     } else {
       const logMin = Math.log10(yMin);
       const logMax = Math.log10(yMax);
-      const logData = Math.log10(dataY);
+      const logData = Math.log10(actualDataY);
       yRatio = (logData - logMin) / (logMax - logMin);
     }
   } else {
-    yRatio = (dataY - y1.value) / (y2.value - y1.value);
+    yRatio = (actualDataY - y1.value) / (y2.value - y1.value);
   }
 
   // Inverse of canvasToDataCoords: find pixel P such that
@@ -157,3 +170,5 @@ export function dataToCanvasCoords(
 
   return { x: canvasX, y: canvasY };
 }
+
+

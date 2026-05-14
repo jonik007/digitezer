@@ -14,6 +14,7 @@ export const ControlPanel: React.FC = () => {
     setScaleType,
     updateCalibrationValue,
     toggleShowAxes,
+    toggleSwapAxes,
     series,
     activeSeriesId,
     addSeries,
@@ -264,7 +265,14 @@ export const ControlPanel: React.FC = () => {
                     onChange={toggleShowAxes}
                     style={{ cursor: 'pointer' }}
                   />
-                  <span>Показать оси калибровки</span>
+                  <label style={{ marginLeft: '5px' }}>Показать оси калибровки</label>
+                  <input
+                    type="checkbox"
+                    checked={calibration.swapAxes}
+                    onChange={toggleSwapAxes}
+                    style={{ cursor: 'pointer', marginLeft: '20px' }}
+                  />
+                  <label style={{ marginLeft: '5px' }}>Менять оси местами (X&lt;-&gt;Y)</label>
                 </label>
               </div>
               <p style={{ fontSize: '12px', color: '#28a745', marginTop: '5px', fontWeight: 'bold' }}>
@@ -370,6 +378,21 @@ export const ControlPanel: React.FC = () => {
             }}
           >
             💾 Экспорт JSON
+          </button>
+          <button
+            onClick={handleExportPythonList}
+            disabled={series.length === 0}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: series.length === 0 ? '#ccc' : '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: series.length === 0 ? 'not-allowed' : 'pointer',
+              marginLeft: '8px',
+            }}
+          >
+            🐍 Экспорт Python
           </button>
           <button
             onClick={clearAllData}

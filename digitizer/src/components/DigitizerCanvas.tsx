@@ -26,10 +26,8 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     updateSeriesPoint,
     removePointFromSeries,
     toolMode,
+    calibration: { showAxes },
   } = useAppStore();
-
-  // State to track which point to delete on click
-  const [pointToDelete, setPointToDelete] = useState<{ seriesId: string; pointIndex: number } | null>(null);
 
   // Load image when src changes
   React.useEffect(() => {
@@ -116,8 +114,8 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
     }
   };
 
-  // Handle click on a point to delete it in digitize mode
   const handlePointClick = (seriesId: string, pointIndex: number) => {
+    // Remove point on click in digitize mode
     if (toolMode === 'digitize') {
       removePointFromSeries(seriesId, pointIndex);
     }
@@ -156,6 +154,36 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
               });
             }}
           />
+        )}
+
+        {/* Calibration axes - rendered only if showAxes is true */}
+        {showAxes && calibration.isCalibrated && (
+          <>
+            {/* X-axis line */}
+            <Line
+              points={[
+                toStageCoords(calibration.xPoints[0].canvasX, calibration.xPoints[0].canvasY).x,
+                toStageCoords(calibration.xPoints[0].canvasX, calibration.xPoints[0].canvasY).y,
+                toStageCoords(calibration.xPoints[1].canvasX, calibration.xPoints[1].canvasY).x,
+                toStageCoords(calibration.xPoints[1].canvasX, calibration.xPoints[1].canvasY).y,
+              ]}
+              stroke="rgba(255, 0, 0, 0.7)"
+              strokeWidth={2}
+              dash={[5, 5]}
+            />
+            {/* Y-axis line */}
+            <Line
+              points={[
+                toStageCoords(calibration.yPoints[0].canvasX, calibration.yPoints[0].canvasY).x,
+                toStageCoords(calibration.yPoints[0].canvasX, calibration.yPoints[0].canvasY).y,
+                toStageCoords(calibration.yPoints[1].canvasX, calibration.yPoints[1].canvasY).x,
+                toStageCoords(calibration.yPoints[1].canvasX, calibration.yPoints[1].canvasY).y,
+              ]}
+              stroke="rgba(0, 0, 255, 0.7)"
+              strokeWidth={2}
+              dash={[5, 5]}
+            />
+          </>
         )}
 
         {/* Calibration points - rendered in image-local coordinates */}
@@ -258,36 +286,6 @@ export const DigitizerCanvas: React.FC<CanvasProps> = ({ width, height }) => {
               })}
           </Group>
         ))}
-
-        {/* Calibration axes - rendered only after calibration and if showAxes is true */}
-        {calibration.isCalibrated && calibration.showAxes && (
-          <Group>
-            {/* X-axis line */}
-            <Line
-              points={[
-                calibration.xPoints[0].canvasX,
-                calibration.xPoints[0].canvasY,
-                calibration.xPoints[1].canvasX,
-                calibration.xPoints[1].canvasY,
-              ]}
-              stroke="red"
-              strokeWidth={2}
-              dash={[5, 5]}
-            />
-            {/* Y-axis line */}
-            <Line
-              points={[
-                calibration.yPoints[0].canvasX,
-                calibration.yPoints[0].canvasY,
-                calibration.yPoints[1].canvasX,
-                calibration.yPoints[1].canvasY,
-              ]}
-              stroke="blue"
-              strokeWidth={2}
-              dash={[5, 5]}
-            />
-          </Group>
-        )}
 
         {/* Crosshair reference lines in bottom-left corner */}
         <Line

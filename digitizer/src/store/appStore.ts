@@ -23,6 +23,7 @@ interface AppState {
   updateCalibrationValue: (axis: 'x' | 'y', index: number, value: number) => void;
   setScaleType: (axis: 'x' | 'y', scaleType: 'linear' | 'log') => void;
   toggleShowAxes: () => void;
+  toggleSwapAxes: () => void;
   addSeries: (name: string, color: string) => string;
   removeSeries: (id: string) => void;
   setActiveSeries: (id: string | null) => void;
@@ -58,6 +59,7 @@ const defaultCalibration: CalibrationState = {
   yScaleType: 'linear',
   isCalibrated: false,
   showAxes: true,
+  swapAxes: false,
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -140,6 +142,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     })),
   
+  toggleSwapAxes: () =>
+    set((state) => ({
+      calibration: {
+        ...state.calibration,
+        swapAxes: !state.calibration.swapAxes,
+      }
+    })),
+
   addSeries: (name, color) => {
     const id = generateId();
     const newSeries: DataSeries = {
@@ -203,12 +213,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   exportToCSV: () => {
     const state = get();
+    const swap = state.calibration.swapAxes;
     let csv = '';
     state.series.forEach(series => {
       csv += `# Series: ${series.name}\n`;
       csv += 'X,Y\n';
       series.points.forEach(point => {
-        csv += `${point.x},${point.y}\n`;
+        csv += `${swap ? point.y : point.x},${swap ? point.x : point.y}\n`;
       });
       csv += '\n';
     });
@@ -217,18 +228,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   exportToJSON: () => {
     const state = get();
-    return JSON.stringify({
+    const swap = state.calibration.swapAxes;
+    const result = {
       calibration: state.calibration,
-      series: state.series,
-    }, null, 2);
+      series: state.series.map(s => ({
+        ...s,
+        points: s.points.map(p => swap ? { x: p.y, y: p.x } : p),
+      })),
+    };
+    return JSON.stringify(result, null, 2);
   },
   
   exportToPythonList: () => {
     const state = get();
+    const swap = state.calibration.swapAxes;
     let output = '';
     state.series.forEach(series => {
-      const pointsStr = series.points.map(p => `    (${p.x.toFixed(5)}, ${p.y.toFixed(2)})`).join(',\n');
-      output += `${series.name} = [\n${pointsStr}\n]\n\n`;
+      const pointsStr = series.points.map(p => {
+        const x = swap ? p.y : p.x;
+        const y = swap ? p.x : p.y;
+        return `(${x.toFixed(5)}, ${y.toFixed(2)})`;
+      }).join(', ');
+      output += `${series.name} = [${pointsStr}]\n\n`;
     });
     return output;
   },
